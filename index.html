@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>3D Vision & Depth Sensing Lab v1.0</title>
+<style>body{font-family:Arial;margin:0;background:#f1f5f9;color:#172033}header{background:#0f172a;color:white;padding:20px}main{max-width:1200px;margin:auto;padding:18px}.card{background:white;border:1px solid #cbd5e1;border-radius:12px;padding:16px;margin:14px 0}.g{display:grid;grid-template-columns:1fr 1fr;gap:14px}canvas{width:100%;border:1px solid #cbd5e1}.c{margin:12px 0}.c input{width:100%}button{padding:9px;margin:4px;border:1px solid #cbd5e1;border-radius:7px;background:white}textarea{width:100%;height:300px;background:#0b1220;color:#dbeafe;padding:12px}.eq{text-align:center;font-size:24px;font-weight:bold}@media(max-width:750px){.g{grid-template-columns:1fr}}</style></head>
+<body><header><h1>3D Vision & Depth Sensing — Interactive Virtual Laboratory v1.0</h1><p>Robotics & Computer Vision | Module 4</p><b>Prepared by: Prof. Dinesh S. Auti | Department of EXCP</b></header><main>
+<div class="card"><h2>Experiment 1 — Stereo Vision → Disparity → Depth</h2><div class="eq">Z = fB / d</div></div>
+<div class="g"><div class="card"><canvas id="s" width="650" height="400"></canvas></div><div class="card">
+<div class="c">Baseline B: <b id="bv"></b> m<input id="b" type="range" min="5" max="40" value="12"></div>
+<div class="c">Focal length f: <b id="fv"></b> px<input id="f" type="range" min="300" max="1200" value="700"></div>
+<div class="c">Object depth Z: <b id="zv"></b> m<input id="z" type="range" min="50" max="800" value="250"></div>
+<p>Disparity: <b id="dv"></b> px</p></div></div>
+<div class="card"><h3>Synthetic Depth Map — click to sample depth</h3><canvas id="d" width="1000" height="240"></canvas><p id="sample"></p></div>
+
+<div class="card"><h2>Experiment 2 — MRI/CT Slice Stack → Segmentation → 3D Volume Concept</h2><p>Educational synthetic data only; not a diagnostic medical system.</p></div>
+<div class="g"><div class="card"><canvas id="m" width="600" height="440"></canvas></div><div class="card">
+<div class="c">Slice: <b id="sv"></b><input id="sl" type="range" min="1" max="32" value="16"></div>
+<div class="c">Threshold: <b id="tv"></b><input id="t" type="range" min="20" max="235" value="120"></div>
+<button id="seg">Toggle segmentation</button><canvas id="v" width="600" height="260"></canvas></div></div>
+
+<div class="card"><h2>Real Image Lab</h2><input id="file" type="file" accept="image/*"><button id="gray">Grayscale</button><button id="thr">Threshold</button><button id="edge">Edges</button></div>
+<div class="g"><div class="card"><b>Input</b><canvas id="i" width="600" height="400"></canvas></div><div class="card"><b>Processed</b><canvas id="o" width="600" height="400"></canvas></div></div>
+
+<div class="card"><h2>Code Lab — OpenCV Python Companion</h2><textarea>import cv2
+import numpy as np
+
+left  = cv2.imread("left.png", 0)
+right = cv2.imread("right.png", 0)
+
+stereo = cv2.StereoSGBM_create(
+    minDisparity=0,
+    numDisparities=96,
+    blockSize=9
+)
+disparity = stereo.compute(left, right).astype(np.float32) / 16.0
+
+f_px = 700.0
+baseline_m = 0.12
+valid = disparity > 0
+depth = np.zeros_like(disparity)
+depth[valid] = (f_px * baseline_m) / disparity[valid]
+
+cv2.imshow("Disparity", disparity / disparity.max())
+cv2.waitKey(0)</textarea></div>
+</main><script>
+const q=x=>document.querySelector(x),S=q('#s'),x=S.getContext('2d'),D=q('#d'),dx=D.getContext('2d');
+function stereo(){let B=+q('#b').value/100,f=+q('#f').value,Z=+q('#z').value/100,d=f*B/Z;q('#bv').textContent=B.toFixed(2);q('#fv').textContent=f;q('#zv').textContent=Z.toFixed(2);q('#dv').textContent=d.toFixed(1);x.clearRect(0,0,650,400);x.fillStyle='#2563eb';x.fillRect(120,320,70,45);x.fillRect(460,320,70,45);x.fillStyle='#d97706';x.beginPath();x.arc(325,80+Z*25,25,0,7);x.fill();x.strokeStyle='#94a3b8';x.beginPath();x.moveTo(155,320);x.lineTo(325,80+Z*25);x.moveTo(495,320);x.lineTo(325,80+Z*25);x.stroke();x.fillStyle='#172033';x.font='16px Arial';x.fillText('LEFT CAMERA',100,390);x.fillText('RIGHT CAMERA',440,390);depth(B,f)}
+function depth(B,f){let w=D.width,h=D.height,im=dx.createImageData(w,h);for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){let z=1+6*xx/w+.5*Math.sin(y/25),di=f*B/z,a=Math.min(1,di/90),j=(y*w+xx)*4;im.data[j]=255*a;im.data[j+1]=120;im.data[j+2]=255*(1-a);im.data[j+3]=255}dx.putImageData(im,0,0)}
+['#b','#f','#z'].forEach(a=>q(a).oninput=stereo);D.onclick=e=>{let r=D.getBoundingClientRect(),xx=(e.clientX-r.left)/r.width*D.width,y=(e.clientY-r.top)/r.height*D.height,z=1+6*xx/D.width+.5*Math.sin(y/25);q('#sample').textContent='Approx. sampled depth: '+z.toFixed(2)+' m'};stereo();
+
+let sg=false,M=q('#m'),mx=M.getContext('2d'),V=q('#v'),vx=V.getContext('2d');
+function med(){let s=+q('#sl').value,t=+q('#t').value;q('#sv').textContent=s;q('#tv').textContent=t;let w=M.width,h=M.height,im=mx.createImageData(w,h),cx=w/2,cy=h/2,p=(s-16)/16;for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){let nx=(xx-cx)/(180*(1-.15*Math.abs(p))),ny=(y-cy)/(145*(1-.1*Math.abs(p))),r=nx*nx+ny*ny,val=r<1?60+160*(1-r):8;if((xx-cx+40)**2+(y-cy-10)**2<1500)val=205;let j=(y*w+xx)*4,z=sg?(val>=t?245:10):val;im.data[j]=im.data[j+1]=im.data[j+2]=z;im.data[j+3]=255}mx.putImageData(im,0,0);vx.clearRect(0,0,600,260);for(let n=0;n<18;n++){vx.strokeStyle='rgba(37,99,235,.45)';vx.beginPath();vx.ellipse(220+n*10,210-n*8,130-n*2,38-n*.8,0,0,7);vx.stroke()}}
+q('#sl').oninput=med;q('#t').oninput=med;q('#seg').onclick=()=>{sg=!sg;med()};med();
+
+let img=null,I=q('#i'),O=q('#o'),ix=I.getContext('2d'),ox=O.getContext('2d');
+function fit(im,c,ct){ct.clearRect(0,0,c.width,c.height);let s=Math.min(c.width/im.width,c.height/im.height),w=im.width*s,h=im.height*s;ct.drawImage(im,(c.width-w)/2,(c.height-h)/2,w,h)}
+q('#file').onchange=e=>{let f=e.target.files[0];if(!f)return,u=URL.createObjectURL(f),im=new Image();im.onload=()=>{img=im;fit(im,I,ix);fit(im,O,ox);URL.revokeObjectURL(u)};im.src=u};
+function proc(k){if(!img)return;fit(img,O,ox);let a=ox.getImageData(0,0,O.width,O.height),d=a.data,g=[];for(let j=0;j<d.length;j+=4)g.push(.299*d[j]+.587*d[j+1]+.114*d[j+2]);for(let y=1;y<O.height-1;y++)for(let xx=1;xx<O.width-1;xx++){let p=y*O.width+xx,z=k==='gray'?g[p]:k==='thr'?(g[p]>120?255:0):Math.min(255,Math.abs(g[p+1]-g[p-1])+Math.abs(g[p+O.width]-g[p-O.width]));let j=p*4;d[j]=d[j+1]=d[j+2]=z}ox.putImageData(a,0,0)}
+q('#gray').onclick=()=>proc('gray');q('#thr').onclick=()=>proc('thr');q('#edge').onclick=()=>proc('edge');
+</script></body></html>
